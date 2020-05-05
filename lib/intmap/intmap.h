@@ -7,6 +7,65 @@
  * This uses ints instead of longs internally and does some of the maths at compile time.
  * https://github.com/sensorium/Mozzi/blob/master/IntMap.h
 */
+
+template<typename T>
+class IntMap_T
+{
+
+public:
+	/** Constructor.
+	@param imin the minimum of the input range.
+	@param imax the maximum of the input range.
+	@param omin the minimum of the output range.
+	@param omax the maximum of the output range.
+	*/
+	IntMap_T(T imin, T imax, int omin, int omax)
+			: inMin(imin), inMax(imax), outMin(omin), outMax(omax)
+	{
+		if (imin != imax) {
+            mul = (256L * (omax-omin)) / (imax-imin);
+        };
+	}
+
+    void Reset(T imin, T imax, int omin, int omax)
+	{
+		inMin  = imin;
+        inMax  = imax;
+        outMin = omin;
+        outMax = omax;
+        mul    = 0;
+        if (imin != imax) {
+            mul = (256L * (omax-omin)) / (imax-imin);
+        };
+    }
+
+	/** Process the next input value.
+	 * @param v the next integer to process.
+	 * @return the input integer mapped to the output range.
+	*/
+	int Value(T v) const {
+        return (int)(((mul * (v - inMin))>>8) + outMin);
+	}
+
+    /**
+     * 
+     * 
+     */
+    int Constrain(T v) const {
+        v = constrain(v, inMin, inMax);
+        return Value(v);
+    }
+/*
+    // map.
+    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+*/
+
+private:
+	T inMin, inMax;
+    int outMin, outMax;
+	long mul;
+};
+
 class IntMap {
 
 public:
@@ -61,5 +120,7 @@ private:
 	int inMin, inMax, outMin, outMax;
 	long mul;
 };
+
+typedef IntMap_T<unsigned int >     TimeMillisMap;
 
 #endif /* INTMAP_H_ */

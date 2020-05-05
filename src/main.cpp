@@ -9,10 +9,8 @@
 
 unsigned int  now;
 
-
-
 KeyFrame srvKeyFrames[] = {
-    {0, centerAngle, false}, {1000, 0, true},
+    {0, FRAME_NONE, centerAngle, false}, {1000, FRAME_NONE, 0, true},
 };
 
 int prevLedPattern = -1;
@@ -88,21 +86,26 @@ void playOneImp() {
 void OnKeyFrameFinished(void* sender, EventArgs* e)
 {
     // 次の角度ど時間を決定
-    auto span  = random(1000, 3000);
+    auto span  = (unsigned int)random(1000, 3000);
     auto angle = random(leftAngle, rightAngle);
     auto frz   = (random(0, 8) == 0);
-    Serial.print("srv update(");
-    Serial.print("span: ");     Serial.print(span);
+
+    auto &frame = srvKeyFrames[0];
+    // アニメーション割当
+    frame.IsFreeze   = frz;
+    frame.TimeSpanMS = span;
+    frame.DestValue  = map(angle, minAngle, maxAngle, minPulse, maxPulse);
+    srvAnimator.SetKeyFrame(frame);
+
+    Serial.print("ctr: ");
+    Serial.print(now);
+    Serial.print(",  srv update(");
+    Serial.print("span: ");     Serial.print(frame.TimeSpanMS);
     Serial.print(", angle: ");  Serial.print(angle);
-    Serial.print(", freeze: "); Serial.print(frz);
+    Serial.print(", pulse: ");  Serial.print(frame.DestValue);
+    Serial.print(", freeze: "); Serial.print(frame.IsFreeze);
     Serial.println(")");
 
-    // アニメーション割当
-    srvKeyFrames[0].IsFreeze   = frz;
-    srvKeyFrames[0].TimeSpanMS = span;
-    srvKeyFrames[0].DestValue  = map(angle, minAngle, maxAngle, minPulse, maxPulse);
-    srvAnimator.SetKeyFrame(srvKeyFrames[0]);
-    
     // LEDのアニメーションも更新する
     OnLedKeyFrameFinished(NULL, (EventArgs*)(NULL));
 }
@@ -116,46 +119,47 @@ void OnLedKeyFrameFinished(void* sender, EventArgs* e)
     ////
     /// Led FSM.
     //
-    int a = random(LED_BOOT, LED_PATTERN_NUM);
+    int next = random(LED_BOOT, LED_PATTERN_NUM);
 
-    if(prevLedPattern == LED_BOOT && a == LED_BOOT) {
-        a = LED_KEEP;
+    if(prevLedPattern == LED_BOOT && next == LED_BOOT) {
+        next = LED_KEEP;
     }else
-    if(prevLedPattern != LED_OFF && a == LED_BOOT) {
-        a = LED_BLINK;
+    if(prevLedPattern != LED_OFF && next == LED_BOOT) {
+        next = LED_BLINK;
     }else
-    if(prevLedPattern == LED_OFF && a == LED_BLINK) {
-        a = LED_BOOT;
+    if(prevLedPattern == LED_OFF && next == LED_BLINK) {
+        next = LED_BOOT;
     }
 
     if(prevLedPattern == -1){
-        a = LED_BOOT;
+        next = LED_BOOT;
     }
     
     if(isPlay){
-        a = LED_KEEP;
+        next = LED_KEEP;
     }
 
-    if(a == LED_KEEP){
+    if(next == LED_KEEP){
         return;
     }
     //a = 1;
     //Serial.print("led pattern: ");
     //Serial.println(a);
 
-    KeyFrame* kf  = NULL;
+    KeyFrame* pKeyFrames  = NULL;
     int       len = 0;
     
-    switch(a){
-        case LED_BOOT :   kf = ledKeyFrames_Boot;      len = array_length(ledKeyFrames_Boot); playStart(); break;
-        case LED_BLINK:   kf = ledKeyFrames_LED_BLINK; len = array_length(ledKeyFrames_LED_BLINK); break;
-        case LED_KEEP :   kf = ledKeyFrames_KEEP;      len = array_length(ledKeyFrames_KEEP);      break;
-        case LED_OFF  :   kf = ledKeyFrames_OFF;       len = array_length(ledKeyFrames_OFF);       break;
+    switch(next)
+    {
+        case LED_BOOT :   pKeyFrames = ledKeyFrames_Boot;      len = array_length(ledKeyFrames_Boot); playStart(); break;
+        case LED_BLINK:   pKeyFrames = ledKeyFrames_LED_BLINK; len = array_length(ledKeyFrames_LED_BLINK); break;
+        case LED_KEEP :   pKeyFrames = ledKeyFrames_KEEP;      len = array_length(ledKeyFrames_KEEP);      break;
+        case LED_OFF  :   pKeyFrames = ledKeyFrames_OFF;       len = array_length(ledKeyFrames_OFF);       break;
     }
 
     if(len != 0){
-        prevLedPattern = a;
-        ledAnimator.SetKeyFrames(kf, len);
+        prevLedPattern = next;
+        ledAnimator.SetKeyFrames(pKeyFrames, len);
     }
 }
 
@@ -178,6 +182,7 @@ void setup() {
 
     pinMode(voicePin, OUTPUT);
     pinMode(ledPin, OUTPUT);
+    pinMode(spkEnablePin, OUTPUT);
     
     servo1.attach(servoPin, minPulse, maxPulse);
     servo1.write(centerAngle);
@@ -191,6 +196,8 @@ void setup() {
 
     ledAnimator.SetKeyFrames(ledKeyFrames_Boot, array_length(ledKeyFrames_Boot));
     ledAnimator.Start(0);
+
+    digitalWrite(spkEnablePin, 1);
 
     isPlay = false;
     
@@ -220,18 +227,20 @@ void loop() {
     ////
     /// update Devices.
     //
-    int v = srvAnimator.GetValue();
-    if(minPulse <= v && v <= maxPulse)
+    int sv = srvAnimator.GetValue();
+    //Serial.print("tservo:"); Serial.println(v);
+    if(minPulse <= sv && sv <= maxPulse)
     {
         if (!isPlay) {
-            servo1.writeMicroseconds(v);
+            servo1.writeMicroseconds(sv);
         }
     }else{
         Serial.print("illegal pulse width!!!!! : ");
-        Serial.println(v);
+        Serial.println(sv);
     }
-        
-    analogWrite(ledPin, ledAnimator.GetValue());
+    
+    int lv = ledAnimator.GetValue();
+    analogWrite(ledPin, lv);
     
     prevTime = now;
 }

@@ -6,7 +6,7 @@
  * 
  */
 KeyFrameAnimator::KeyFrameAnimator():
-    IsPlayng(false), nowValue(0), now(0), intMap(0, 1, 0, 1)
+    IsPlayng(false), now(0), nowValue(0), intMap(0, 1, 0, 1)
 {
     //ctor
     targetKeyFrame = NULL;

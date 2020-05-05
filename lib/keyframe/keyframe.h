@@ -4,8 +4,19 @@
 #include <event.h>
 #include <intmap.h>
 
+enum {
+    FRAME_NONE,
+    FRAME_SERVO_FREEZE,
+    FRAME_SERVO_MOVE,
+    FRAME_LED_OFF,      // 消灯
+    FRAME_LED_BRIGHT,   // 明るい
+    FRAME_LED_DARK,     // 暗い
+    FRAME_LED_BLINK,    // 点滅3回(1-0-1-0-1)
+} FRAMETYPE;
+
 typedef struct {
-    int  TimeSpanMS;
+    unsigned int  TimeSpanMS;
+    uint8_t type;
     int  DestValue;
     bool IsFreeze;
 } KeyFrame;
@@ -48,7 +59,8 @@ class KeyFrameAnimator
         int nowValue;
         int numFrames;
         int nowFrameId;
-        IntMap intMap;
+        TimeMillisMap intMap;
+        //IntMap intMap;
 };
 
 inline void KeyFrameAnimator::Update(unsigned int n)
