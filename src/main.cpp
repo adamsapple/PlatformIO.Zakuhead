@@ -71,7 +71,7 @@ void playOneImp() {
         //OnKeyFrameFinished(NULL, (EventArgs*)(NULL));
         isPlay = false;
         OCR2A = 0;
-        pinMode(voicePin, INPUT);
+        // pinMode(voicePin, INPUT);
         servo1.attach(servoPin, minPulse, maxPulse);
         return;
     }
